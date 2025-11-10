@@ -1,0 +1,77 @@
+# File: .github/workflows/terraform-ci-cd.yml
+name: Terraform CI/CD
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    name: Terraform Plan & Apply
+    runs-on: ubuntu-latest
+    env:
+      TF_WORKING_DIR: ./terraform # adjust to your terraform code path
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.7.0
+
+      - name: Terraform Init
+        run: terraform -chdir=$TF_WORKING_DIR init
+
+      - name: Validate Terraform syntax
+        run: terraform -chdir=$TF_WORKING_DIR validate
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform -chdir=$TF_WORKING_DIR plan -out=tfplan
+
+      - name: Comment Terraform Plan on PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: $TF_WORKING_DIR/tfplan.txt
+          message: |
+            ## Terraform Plan
+            ```
+            $(terraform -chdir=$TF_WORKING_DIR show -no-color tfplan)
+            ```
+
+      - name: Check for no changes
+        id: check_changes
+        run: |
+          terraform -chdir=$TF_WORKING_DIR show -json tfplan | jq '.resource_changes | length' > changes_count.txt
+          COUNT=$(cat changes_count.txt)
+          echo "Changes count=$COUNT"
+          if [ "$COUNT" -eq 0 ]; then
+            echo "No changes detected."
+            echo "apply=false" >> $GITHUB_OUTPUT
+          else
+            echo "apply=true" >> $GITHUB_OUTPUT
+          fi
+
+  apply:
+    needs: terraform
+    if: needs.terraform.outputs.apply == 'true' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.7.0
+
+      - name: Terraform Init
+        run: terraform -chdir=$TF_WORKING_DIR init
+
+      - name: Terraform Apply
+        run: terraform -chdir=$TF_WORKING_DIR apply -auto-approve
