@@ -30,9 +30,13 @@ jobs:
       with:
         terraform_version: ${{ env.TF_VERSION }}
 
-    - name: Terraform Format
+    - name: Create output directory
+      run: mkdir -p terraform/output
+
+    - name: Terraform Format Check
       id: fmt
       run: terraform fmt -check -recursive
+      working-directory: ./terraform
 
     - name: Terraform Init
       id: init
@@ -48,45 +52,74 @@ jobs:
       id: plan
       run: |
         terraform plan -no-color -input=false \
+          -var="branch_name=${{ github.head_ref }}" \
+          -var="last_updated_by=${{ github.actor }}" \
           -var-file=../environments/dev/terraform.tfvars \
           -out=tfplan
       working-directory: ./terraform
       continue-on-error: false
 
-    - name: Update PR with Plan
+    - name: Update PR with Plan Output
       uses: actions/github-script@v6
       if: github.event_name == 'pull_request'
       env:
-        PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
+        PLAN: "${{ steps.plan.outputs.stdout }}"
       with:
         script: |
-          const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
-          #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
-          #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
-          #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+          const output = `## Terraform CI/CD Validation Results ✅
+
+          ### Validation Checks:
+          - **Format Check**: \`${{ steps.fmt.outcome }}\` ✅
+          - **Initialization**: \`${{ steps.init.outcome }}\` ✅  
+          - **Syntax Validation**: \`${{ steps.validate.outcome }}\` ✅
+          - **Execution Plan**: \`${{ steps.plan.outcome }}\` ✅
+
+          ### Terraform Plan Output:
+          <details>
+          <summary>📋 Click to view detailed plan</summary>
           
-          <details><summary>Show Plan</summary>
-          
-          \`\`\`\n
+          \`\`\`terraform
           ${process.env.PLAN}
           \`\`\`
           
           </details>
+
+          ---
+          *Triggered by: @${{ github.actor }}*`;
           
-          *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
+          // First, try to find existing comment from this workflow
+          const comments = await github.rest.issues.listComments({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            body: output
-          })
+            issue_number: context.issue.number,
+          });
+          
+          const existingComment = comments.data.find(comment => 
+            comment.body.includes('Terraform CI/CD Validation Results')
+          );
+          
+          if (existingComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: output
+            });
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: output
+            });
+          }
 
   terraform-apply:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: Terraform Apply
     runs-on: ubuntu-latest
-    needs: [terraform-plan]
     
     steps:
     - name: Checkout code
@@ -97,6 +130,9 @@ jobs:
       with:
         terraform_version: ${{ env.TF_VERSION }}
 
+    - name: Create output directory
+      run: mkdir -p terraform/output
+
     - name: Terraform Init
       run: terraform init
       working-directory: ./terraform
@@ -105,6 +141,8 @@ jobs:
       id: changes
       run: |
         terraform plan -detailed-exitcode -input=false \
+          -var="branch_name=main" \
+          -var="last_updated_by=github-action" \
           -var-file=../environments/dev/terraform.tfvars \
           -no-color
       working-directory: ./terraform
@@ -112,9 +150,20 @@ jobs:
 
     - name: Terraform Apply
       if: steps.changes.outcome == 'failure'
-      run: terraform apply -auto-approve -input=false
+      run: |
+        terraform apply -auto-approve -input=false \
+          -var="branch_name=main" \
+          -var="last_updated_by=github-action" \
+          -var-file=../environments/dev/terraform.tfvars
       working-directory: ./terraform
 
     - name: No Changes Detected
       if: steps.changes.outcome == 'success'
-      run: echo "No changes detected. Skipping apply."
+      run: echo "✅ No infrastructure changes detected. Skipping apply."
+
+    - name: Show Generated Files
+      run: |
+        echo "Generated files:"
+        ls -la terraform/output/
+        echo "Config file content:"
+        cat terraform/output/config.txt || echo "No config file"
