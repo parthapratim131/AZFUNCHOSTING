@@ -1,8 +1,18 @@
 terraform {
   required_version = ">= 1.0"
+
+  required_providers {
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.4"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.5"
+    }
+  }
 }
 
-# Simple local file resource - no cloud provider needed
 resource "local_file" "config" {
   filename = "${path.module}/output/config.txt"
   content = <<-EOT
@@ -14,7 +24,6 @@ resource "local_file" "config" {
   EOT
 }
 
-# Another example - random ID generator
 resource "random_id" "app_id" {
   byte_length = 4
 }
@@ -22,15 +31,15 @@ resource "random_id" "app_id" {
 resource "local_file" "app_info" {
   filename = "${path.module}/output/app-info.json"
   content = jsonencode({
-    app_name    = "AZFUNCHOSTING"
-    app_id      = random_id.app_id.hex
-    environment = var.environment
-    version     = var.app_version
-    created_at  = timestamp()
+    app_name      = "AZFUNCHOSTING"
+    app_id        = random_id.app_id.hex
+    environment   = var.environment
+    version       = var.app_version
+    feature_toggle = var.feature_toggle
+    created_at    = timestamp()
   })
 }
 
-# Output values
 output "config_file_path" {
   value = local_file.config.filename
 }
@@ -42,6 +51,6 @@ output "app_id" {
 output "generated_files" {
   value = [
     local_file.config.filename,
-    local_file.app_info.filename
+    local_file.app_info.filename,
   ]
 }
