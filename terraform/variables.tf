@@ -1,7 +1,7 @@
 variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
-  default     = "Dev"
+  default     = "cev"
 }
 
 variable "branch_name" {
