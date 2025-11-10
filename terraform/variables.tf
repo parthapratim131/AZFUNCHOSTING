@@ -1,35 +1,23 @@
-variable "resource_group_name" {
-  description = "Name of the resource group"
-  type        = string
-  default     = "rg-azfunc-hosting"
-}
-
-variable "location" {
-  description = "Azure region where resources will be created"
-  type        = string
-  default     = "East US"
-}
-
 variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
-  default     = "dev"
+  default     = "Dev"
 }
 
-variable "storage_account_name" {
-  description = "Name of the storage account"
+variable "branch_name" {
+  description = "Name of the source branch"
   type        = string
-  default     = "stazfunchosting"
+  default     = "unknown"
 }
 
-variable "app_service_plan_name" {
-  description = "Name of the App Service Plan"
+variable "last_updated_by" {
+  description = "Who made the last update"
   type        = string
-  default     = "asp-azfunc-hosting"
+  default     = "unknown"
 }
 
-variable "function_app_name" {
-  description = "Name of the Function App"
+variable "app_version" {
+  description = "Application version"
   type        = string
-  default     = "func-azfunc-hosting"
+  default     = "1.0.0"
 }
