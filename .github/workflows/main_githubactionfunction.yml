@@ -1,73 +1,75 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
-# More GitHub Actions for Azure: https://github.com/Azure/actions
+																					  
+																 
 
-name: Build and deploy Node.js project to Azure Function App - githubactionfunction
+name: Deploy Node.js project to Azure Function App
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  [push]
+			 
+			
+					
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
-  NODE_VERSION: '22.x' # set this to the node version to use (supports 8.x, 10.x, 12.x)
+  AZURE_FUNCTIONAPP_NAME: 'your-app-name'   # set this to your function app name on Azure
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'       # set this to the path to your function app project, defaults to the repository root
+  NODE_VERSION: '16.x'                      # set this to the node version to use (e.g. '8.x', '10.x', '12.x')
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: windows-latest
-    permissions:
-      contents: read #This is required for actions/checkout
-      
+    environment: dev
+														   
+	  
     steps:
-      - name: 'Checkout GitHub Action'
-        uses: actions/checkout@v4
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v3
 
-      - name: Setup Node ${{ env.NODE_VERSION }} Environment
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ env.NODE_VERSION }}
+    - name: Setup Node ${{ env.NODE_VERSION }} Environment
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
 
-      - name: 'Resolve Project Dependencies Using Npm'
-        shell: pwsh
-        run: |
-          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          npm install
-          npm run build --if-present
-          npm run test --if-present
-          popd
+    - name: 'Resolve Project Dependencies Using Npm'
+      shell: pwsh
+      run: |
+        pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+        npm install
+        npm run build --if-present
+        npm run test --if-present
+        popd
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-app
-          path: .
+    - name: 'Run Azure Functions Action'
+      uses: Azure/functions-action@v1
+			 
+						
+				 
 
-  deploy:
-    runs-on: windows-latest
-    needs: build
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+		 
+						   
+				
+				
+      id: fa
+      with:
+        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+											  
+										  
+			 
+						
+	  
+							
+							
+			 
+																							 
+																							 
+																										 
 
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: node-app
-      
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_5500EA8B579346198BA9AE37003DCD8E }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_A6C6DF692DFD4FD4A5B74BA98B74C2D3 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_19385B6C11FB4D5284FE4400FBB1379B }}
+										  
+									   
+			  
+			 
+										  
+								 
+        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
 
-      - name: 'Run Azure Functions Action'
-        uses: Azure/functions-action@v1
-        id: fa
-        with:
-          app-name: 'githubactionfunction'
-          slot-name: 'Production'
-          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-          
+		  
