@@ -15,7 +15,7 @@ terraform {
 
 resource "local_file" "config" {
   filename = "${path.module}/output/config.txt"
-  content = <<-EOT
+  content  = <<-EOT
     Application: AZFUNCHOSTING
     Environment: ${var.environment}
     Created: ${timestamp()}
@@ -31,12 +31,12 @@ resource "random_id" "app_id" {
 resource "local_file" "app_info" {
   filename = "${path.module}/output/app-info.json"
   content = jsonencode({
-    app_name      = "AZFUNCHOSTING"
-    app_id        = random_id.app_id.hex
-    environment   = var.environment
-    version       = var.app_version
+    app_name       = "AZFUNCHOSTING"
+    app_id         = random_id.app_id.hex
+    environment    = var.environment
+    version        = var.app_version
     feature_toggle = var.feature_toggle
-    created_at    = timestamp()
+    created_at     = timestamp()
   })
 }
 
