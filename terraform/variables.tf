@@ -21,3 +21,8 @@ variable "app_version" {
   type        = string
   default     = "1.1.0"
 }
+variable "feature_toggle" {
+  description = "Enable new features"
+  type        = bool
+  default     = true
+}
