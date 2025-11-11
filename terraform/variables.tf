@@ -19,7 +19,7 @@ variable "last_updated_by" {
 variable "app_version" {
   description = "Application version"
   type        = string
-  default     = "1.1.0"
+  default     = "1.0.0"
 }
 variable "feature_toggle" {
   description = "Enable new features"
